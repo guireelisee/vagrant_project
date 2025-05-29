@@ -21,6 +21,44 @@ cat > /var/www/html/index.php << 'EOL'
 <?php
 $hostname = gethostname();
 $server_ip = $_SERVER['SERVER_ADDR'];
+
+# Submit
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $nom = isset($_POST["nom"]) ? $_POST["nom"] : "";
+    $message = isset($_POST["message"]) ? $_POST["message"] : "";
+    
+    // Validation simple
+    if (empty($nom) || empty($message)) {
+        $error = "Tous les champs sont obligatoires";
+    } else {
+        try {
+            // Connexion à la base de données
+            $conn = new mysqli('192.168.56.20', 'webuser', 'webpass', 'webappdb');
+            
+            if ($conn->connect_error) {
+                throw new Exception("La connexion a échoué: " . $conn->connect_error);
+            }
+            
+            // Insertion des données
+            $stmt = $conn->prepare("INSERT INTO messages (nom, message, serveur) VALUES (?, ?, ?)");
+            $stmt->bind_param("sss", $nom, $message, $hostname);
+            
+            if ($stmt->execute()) {
+                $success = "Message enregistré avec succès!";
+            } else {
+                $error = "Erreur d'enregistrement: " . $stmt->error;
+            }
+            
+            $stmt->close();
+            $conn->close();
+            
+        } catch (Exception $e) {
+            $error = "Erreur de connexion à la base de données: " . $e->getMessage();
+        }
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -186,18 +224,43 @@ $server_ip = $_SERVER['SERVER_ADDR'];
             color: #777;
             font-size: 0.9rem;
         }
+
+        .success {
+            color: #27ae60;
+            padding: 15px;
+            background-color: #eafaf1;
+            border-radius: var(--border-radius);
+            margin: 25px 0;
+            border-left: 4px solid #2ecc71;
+        }
+        
+        .error {
+            color: #e74c3c;
+            padding: 15px;
+            background-color: #fdf5f5;
+            border-radius: var(--border-radius);
+            margin: 25px 0;
+            border-left: 4px solid #e74c3c;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Bienvenue sur <?php echo $hostname; ?></h1>
             <div class="server-info">
                 Serveur actuel : <strong><?php echo $hostname; ?></strong> | Adresse IP : <strong><?php echo $server_ip; ?></strong>
             </div>
         </header>
+
+        <?php if (isset($error)): ?>
+            <div class="error"><?php echo $error; ?></div>
+        <?php endif; ?>
         
-        <form action="submit.php" method="post">
+        <?php if (isset($success)): ?>
+            <div class="success"><?php echo $success; ?></div>
+        <?php endif; ?>
+        
+        <form action="/" method="post">
             <h2>Laissez un message</h2>
             <label for="nom">Nom</label>
             <input type="text" id="nom" name="nom" required>
@@ -244,169 +307,6 @@ $server_ip = $_SERVER['SERVER_ADDR'];
             }
             ?>
         </div>
-        
-        <footer>
-            <p>© <?php echo date('Y'); ?> - Système de messagerie</p>
-        </footer>
-    </div>
-</body>
-</html>
-EOL
-
-# Création du script pour traiter le formulaire
-cat > /var/www/html/submit.php << 'EOL'
-<?php
-$title = "Envoi du message";
-$hostname = gethostname();
-$server_ip = $_SERVER['SERVER_ADDR'];
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $nom = isset($_POST["nom"]) ? $_POST["nom"] : "";
-    $message = isset($_POST["message"]) ? $_POST["message"] : "";
-    
-    // Validation simple
-    if (empty($nom) || empty($message)) {
-        $error = "Tous les champs sont obligatoires";
-    } else {
-        try {
-            // Connexion à la base de données
-            $conn = new mysqli('192.168.56.20', 'webuser', 'webpass', 'webappdb');
-            
-            if ($conn->connect_error) {
-                throw new Exception("La connexion a échoué: " . $conn->connect_error);
-            }
-            
-            // Insertion des données
-            $stmt = $conn->prepare("INSERT INTO messages (nom, message, serveur) VALUES (?, ?, ?)");
-            $stmt->bind_param("sss", $nom, $message, $hostname);
-            
-            if ($stmt->execute()) {
-                $success = "Message enregistré avec succès!";
-            } else {
-                $error = "Erreur d'enregistrement: " . $stmt->error;
-            }
-            
-            $stmt->close();
-            $conn->close();
-            
-        } catch (Exception $e) {
-            $error = "Erreur de connexion à la base de données: " . $e->getMessage();
-        }
-    }
-}
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <title><?php echo $title; ?></title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --light-bg: #f5f7fa;
-            --border-radius: 6px;
-            --box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--light-bg);
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 700px;
-            margin: 60px auto;
-            background: white;
-            padding: 40px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            text-align: center;
-        }
-        
-        h1 {
-            color: var(--primary-color);
-            margin: 0 0 20px 0;
-            font-weight: 600;
-        }
-        
-        .server-info {
-            background-color: var(--light-bg);
-            padding: 12px 15px;
-            border-left: 4px solid var(--accent-color);
-            border-radius: 4px;
-            margin: 20px 0;
-            font-size: 0.95rem;
-            text-align: left;
-        }
-        
-        .success {
-            color: #27ae60;
-            padding: 15px;
-            background-color: #eafaf1;
-            border-radius: var(--border-radius);
-            margin: 25px 0;
-            border-left: 4px solid #2ecc71;
-        }
-        
-        .error {
-            color: #e74c3c;
-            padding: 15px;
-            background-color: #fdf5f5;
-            border-radius: var(--border-radius);
-            margin: 25px 0;
-            border-left: 4px solid #e74c3c;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: var(--accent-color);
-            color: white;
-            text-decoration: none;
-            border-radius: var(--border-radius);
-            margin-top: 25px;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-        
-        .btn:hover {
-            background-color: #2980b9;
-        }
-        
-        footer {
-            margin-top: 30px;
-            color: #777;
-            font-size: 0.9rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1><?php echo $title; ?></h1>
-        
-        <div class="server-info">
-            <strong>Serveur:</strong> <?php echo $hostname; ?> | <strong>Adresse IP:</strong> <?php echo $server_ip; ?>
-        </div>
-        
-        <?php if (isset($error)): ?>
-            <div class="error"><?php echo $error; ?></div>
-        <?php endif; ?>
-        
-        <?php if (isset($success)): ?>
-            <div class="success"><?php echo $success; ?></div>
-        <?php endif; ?>
-        
-        <a href="index.php" class="btn">Retour à l'accueil</a>
-        
-        <footer>
-            <p>© <?php echo date('Y'); ?> - Système de messagerie</p>
-        </footer>
     </div>
 </body>
 </html>
@@ -418,17 +318,6 @@ chmod -R 755 /var/www/html/
 
 # Redémarrage d'Apache
 systemctl restart apache2
-
-# Configuration du fichier hosts
-cat >> /etc/hosts << 'EOL'
-192.168.56.10 lb
-192.168.56.11 web1
-192.168.56.12 web2
-192.168.56.20 db-master
-192.168.56.21 db-slave
-192.168.56.30 monitoring
-192.168.56.100 client
-EOL
 
 # Installation de Node Exporter pour la surveillance des serveurs
 echo "[INFO] Installation de Node Exporter..."
