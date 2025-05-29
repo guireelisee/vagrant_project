@@ -289,7 +289,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         echo "<div class='message-header'>";
                         echo "<span class='message-name'>" . htmlspecialchars($row["nom"]) . "</span>";
                         echo "<div class='message-meta'>";
-                        echo "<span class='message-server'>Serveur: " . htmlspecialchars($row["serveur"]) . "</span>";
                         echo "<span class='message-date'>" . $row["date_creation"] . "</span>";
                         echo "</div>";
                         echo "</div>";

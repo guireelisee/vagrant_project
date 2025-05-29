@@ -9,8 +9,8 @@ apt-get install -y nginx
 # Configuration Nginx pour le load balancing
 cat > /etc/nginx/sites-available/default << 'EOL'
 upstream backend {
-    server 192.168.56.11 max_fails=3 fail_timeout=10s; # web1
-    server 192.168.56.12 max_fails=3 fail_timeout=10s; # web2
+    server 192.168.56.11 max_fails=1 fail_timeout=1s; # web1
+    server 192.168.56.12 max_fails=1 fail_timeout=1s; # web2
 }
 
 server {
